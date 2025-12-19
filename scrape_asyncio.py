@@ -41,6 +41,25 @@ class ScrapeResult:
     elapsed: float = 0.0
 
 
+async def handle_retry(message: str, attempt: int, is_timeout: bool, result: ScrapeResult, start_time: float, index: int, total: int) -> bool:
+    """处理重试逻辑，返回是否继续重试"""
+    if attempt < RETRY_COUNT - 1:
+        if is_timeout:
+            print(f"[{index}/{total}] 超时，第{attempt+1}次尝试失败，{RETRY_DELAY}秒后重试...")
+        else:
+            print(f"[{index}/{total}] 第{attempt+1}次尝试失败: {message[:100]}，{RETRY_DELAY}秒后重试...")
+        await asyncio.sleep(RETRY_DELAY)
+        return True
+
+    result.error = message
+    result.elapsed = time.time() - start_time
+    if is_timeout:
+        print(f"[{index}/{total}] ❌ 失败: 请求超时")
+    else:
+        print(f"[{index}/{total}] ❌ 失败: {message[:100]}")
+    return False
+
+
 def load_articles() -> List[Dict]:
     """从JSON文件加载文章列表"""
     with open(ARTICLES_FILE, 'r', encoding='utf-8') as f:
@@ -62,24 +81,6 @@ async def scrape_single_article(async_firecrawl: AsyncFirecrawl, semaphore, inde
     async with semaphore:
         try:
             print(f"[{index}/{total}] 开始爬取: {title[:60]}...")
-
-            # 失败处理辅助函数，返回是否继续重试
-            async def handle_retry(message: str, attempt: int, is_timeout: bool) -> bool:
-                if attempt < RETRY_COUNT - 1:
-                    if is_timeout:
-                        print(f"[{index}/{total}] 超时，第{attempt+1}次尝试失败，{RETRY_DELAY}秒后重试...")
-                    else:
-                        print(f"[{index}/{total}] 第{attempt+1}次尝试失败: {message[:100]}，{RETRY_DELAY}秒后重试...")
-                    await asyncio.sleep(RETRY_DELAY)
-                    return True
-
-                result.error = message
-                result.elapsed = time.time() - start_time
-                if is_timeout:
-                    print(f"[{index}/{total}] ❌ 失败: 请求超时")
-                else:
-                    print(f"[{index}/{total}] ❌ 失败: {message[:100]}")
-                return False
 
             # 爬取文章（带重试）
             for attempt in range(RETRY_COUNT):
@@ -119,12 +120,12 @@ async def scrape_single_article(async_firecrawl: AsyncFirecrawl, semaphore, inde
                     return result
 
                 except asyncio.TimeoutError:
-                    should_continue = await handle_retry("请求超时", attempt, True)
+                    should_continue = await handle_retry("请求超时", attempt, True, result, start_time, index, total)
                     if should_continue:
                         continue
                     return result
                 except (ClientError, Exception) as e:
-                    should_continue = await handle_retry(str(e), attempt, False)
+                    should_continue = await handle_retry(str(e), attempt, False, result, start_time, index, total)
                     if should_continue:
                         continue
                     return result
@@ -221,11 +222,11 @@ async def main_async():
         close = getattr(async_firecrawl, "close", None)
         if callable(close):
             try:
-                maybe = close()
-                if asyncio.iscoroutine(maybe):
-                    await maybe
+                close_result = close()
+                if asyncio.iscoroutine(close_result):
+                    await close_result
             except Exception:
-                # firecrawl-py 暴露 async close；为兼容不同版本，关闭失败不影响整体流程
+                # firecrawl-py 暴露 async close；为兼容可能存在同步 close 的旧版或第三方实现，关闭失败不影响整体流程
                 pass
 
     for i, result in enumerate(results, 1):
