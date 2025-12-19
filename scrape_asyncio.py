@@ -230,16 +230,22 @@ async def main_async():
         # 并发执行所有任务
         results = await asyncio.gather(*tasks, return_exceptions=True)
     finally:
-        close = getattr(async_firecrawl, "close", None)
-        if callable(close):
-            try:
+        try:
+            aclose = getattr(async_firecrawl, "aclose", None)
+            if callable(aclose):
+                maybe_result = aclose()
+                if asyncio.iscoroutine(maybe_result):
+                    await maybe_result
+                return
+
+            close = getattr(async_firecrawl, "close", None)
+            if callable(close):
                 close_result = close()
                 if asyncio.iscoroutine(close_result):
                     await close_result
-            except Exception:
-                # firecrawl-py 暴露 async close；为兼容可能存在同步 close 的旧版或第三方实现，关闭失败不影响整体流程（此处仅提示，不中断）
-                print("关闭 AsyncFirecrawl 客户端失败，已忽略。")
-                pass
+        except Exception:
+            # firecrawl-py 暴露 async close；兼容可能存在同步 close/aclose 的版本或第三方实现，关闭失败不影响整体流程（此处仅提示，不中断）
+            print("关闭 AsyncFirecrawl 客户端失败，已忽略。")
 
     for i, result in enumerate(results, 1):
         if isinstance(result, Exception):
