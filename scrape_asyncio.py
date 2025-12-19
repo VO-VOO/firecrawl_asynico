@@ -14,7 +14,6 @@ from firecrawl import AsyncFirecrawl
 from datetime import datetime
 from dataclasses import dataclass
 from typing import List, Dict, Optional
-import inspect
 from aiohttp import ClientError
 
 # 配置
@@ -101,7 +100,17 @@ async def scrape_single_article(async_firecrawl: AsyncFirecrawl, semaphore, inde
                     print(f"[{index}/{total}] ✓ 成功 ({result.elapsed:.1f}s): {filepath.name}")
                     return result
 
-                except (ClientError, asyncio.TimeoutError, Exception) as e:
+                except asyncio.TimeoutError as e:
+                    if attempt < RETRY_COUNT - 1:
+                        print(f"[{index}/{total}] 超时，第{attempt+1}次尝试失败，{RETRY_DELAY}秒后重试...")
+                        await asyncio.sleep(RETRY_DELAY)
+                    else:
+                        result.error = "请求超时"
+                        result.elapsed = time.time() - start_time
+                        print(f"[{index}/{total}] ❌ 失败: 请求超时")
+                        return result
+
+                except (ClientError, Exception) as e:
                     if attempt < RETRY_COUNT - 1:
                         print(f"[{index}/{total}] 第{attempt+1}次尝试失败: {str(e)[:100]}，{RETRY_DELAY}秒后重试...")
                         await asyncio.sleep(RETRY_DELAY)
@@ -203,7 +212,7 @@ async def main_async():
         close = getattr(async_firecrawl, "close", None)
         if callable(close):
             maybe = close()
-            if inspect.isawaitable(maybe):
+            if asyncio.iscoroutine(maybe):
                 await maybe
 
     for i, result in enumerate(results, 1):
