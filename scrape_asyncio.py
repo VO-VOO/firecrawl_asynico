@@ -27,7 +27,7 @@ MAX_CONCURRENT = 15  # 推荐值: 2×CPU核心数 = 16
 SEMAPHORE_LIMIT = 15  # 信号量限制，控制同时进行的任务数
 RETRY_COUNT = 3  # 失败重试次数
 RETRY_DELAY = 2.0  # 重试延迟（秒）
-REQUEST_TIMEOUT = 30  # 单次请求超时时间（秒）
+REQUEST_TIMEOUT = 30  # 单次请求超时时间（秒，作用于每次 scrape 调用，未包含重试累计耗时）
 
 
 @dataclass
@@ -62,6 +62,24 @@ async def scrape_single_article(async_firecrawl: AsyncFirecrawl, semaphore, inde
     async with semaphore:
         try:
             print(f"[{index}/{total}] 开始爬取: {title[:60]}...")
+
+            # 失败处理辅助函数，返回是否继续重试
+            async def handle_retry(message: str, attempt: int, is_timeout: bool) -> bool:
+                if attempt < RETRY_COUNT - 1:
+                    if is_timeout:
+                        print(f"[{index}/{total}] 超时，第{attempt+1}次尝试失败，{RETRY_DELAY}秒后重试...")
+                    else:
+                        print(f"[{index}/{total}] 第{attempt+1}次尝试失败: {message[:100]}，{RETRY_DELAY}秒后重试...")
+                    await asyncio.sleep(RETRY_DELAY)
+                    return True
+
+                result.error = message
+                result.elapsed = time.time() - start_time
+                if is_timeout:
+                    print(f"[{index}/{total}] ❌ 失败: 请求超时")
+                else:
+                    print(f"[{index}/{total}] ❌ 失败: {message[:100]}")
+                return False
 
             # 爬取文章（带重试）
             for attempt in range(RETRY_COUNT):
@@ -101,23 +119,15 @@ async def scrape_single_article(async_firecrawl: AsyncFirecrawl, semaphore, inde
                     return result
 
                 except asyncio.TimeoutError:
-                    if attempt < RETRY_COUNT - 1:
-                        print(f"[{index}/{total}] 超时，第{attempt+1}次尝试失败，{RETRY_DELAY}秒后重试...")
-                        await asyncio.sleep(RETRY_DELAY)
-                    else:
-                        result.error = "请求超时"
-                        result.elapsed = time.time() - start_time
-                        print(f"[{index}/{total}] ❌ 失败: 请求超时")
-                        return result
+                    should_continue = await handle_retry("请求超时", attempt, True)
+                    if should_continue:
+                        continue
+                    return result
                 except (ClientError, Exception) as e:
-                    if attempt < RETRY_COUNT - 1:
-                        print(f"[{index}/{total}] 第{attempt+1}次尝试失败: {str(e)[:100]}，{RETRY_DELAY}秒后重试...")
-                        await asyncio.sleep(RETRY_DELAY)
-                    else:
-                        result.error = str(e)
-                        result.elapsed = time.time() - start_time
-                        print(f"[{index}/{total}] ❌ 失败: {str(e)[:100]}")
-                        return result
+                    should_continue = await handle_retry(str(e), attempt, False)
+                    if should_continue:
+                        continue
+                    return result
 
         except Exception as e:
             result.error = str(e)
@@ -215,7 +225,7 @@ async def main_async():
                 if asyncio.iscoroutine(maybe):
                     await maybe
             except Exception:
-                # 关闭失败不影响整体流程，忽略清理异常
+                # firecrawl-py 暴露 async close；为兼容不同版本，关闭失败不影响整体流程
                 pass
 
     for i, result in enumerate(results, 1):
