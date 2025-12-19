@@ -14,6 +14,7 @@ from firecrawl import AsyncFirecrawl
 from datetime import datetime
 from dataclasses import dataclass
 from typing import List, Dict, Optional
+import inspect
 from aiohttp import ClientError
 
 # 配置
@@ -27,6 +28,7 @@ MAX_CONCURRENT = 15  # 推荐值: 2×CPU核心数 = 16
 SEMAPHORE_LIMIT = 15  # 信号量限制，控制同时进行的任务数
 RETRY_COUNT = 3  # 失败重试次数
 RETRY_DELAY = 2.0  # 重试延迟（秒）
+REQUEST_TIMEOUT = 30  # 单次请求超时时间（秒）
 
 
 @dataclass
@@ -47,7 +49,7 @@ def load_articles() -> List[Dict]:
     return data['articles']
 
 
-async def scrape_single_article(semaphore, index: int, title: str, url: str, total: int, output_dir: str) -> ScrapeResult:
+async def scrape_single_article(async_firecrawl: AsyncFirecrawl, semaphore, index: int, title: str, url: str, total: int, output_dir: str) -> ScrapeResult:
     """异步爬取单篇文章"""
     result = ScrapeResult(
         index=index,
@@ -62,19 +64,16 @@ async def scrape_single_article(semaphore, index: int, title: str, url: str, tot
         try:
             print(f"[{index}/{total}] 开始爬取: {title[:60]}...")
 
-            # 初始化AsyncFirecrawl客户端（共享实例），本地firecrawl的api_key可以是任意字符串。
-            async_firecrawl = AsyncFirecrawl(
-                api_key="test",
-                api_url=FIRECRAWL_URL
-            )
-
             # 爬取文章（带重试）
             for attempt in range(RETRY_COUNT):
                 try:
-                    doc = await async_firecrawl.scrape(
-                        url,
-                        formats=["markdown"],
-                        only_main_content=True,
+                    doc = await asyncio.wait_for(
+                        async_firecrawl.scrape(
+                            url,
+                            formats=["markdown"],
+                            only_main_content=True,
+                        ),
+                        timeout=REQUEST_TIMEOUT,
                     )
 
                     if not doc or not doc.markdown:
@@ -178,20 +177,34 @@ async def main_async():
     # 创建信号量限制并发数
     semaphore = asyncio.Semaphore(SEMAPHORE_LIMIT)
 
+    # 初始化共享 AsyncFirecrawl 客户端
+    async_firecrawl = AsyncFirecrawl(
+        api_key="test",
+        api_url=FIRECRAWL_URL
+    )
+
     # 统计信息
     success_count = 0
     failed_count = 0
 
     print(f"\n开始异步并发爬取 (最大并发: {MAX_CONCURRENT})...\n")
 
-    # 创建所有异步任务
-    tasks = [
-        scrape_single_article(semaphore, index, title, url, total, OUTPUT_DIR)
-        for index, title, url, _, _ in pending_articles
-    ]
+    results = []
+    try:
+        # 创建所有异步任务
+        tasks = [
+            scrape_single_article(async_firecrawl, semaphore, index, title, url, total, OUTPUT_DIR)
+            for index, title, url, _, _ in pending_articles
+        ]
 
-    # 并发执行所有任务
-    results = await asyncio.gather(*tasks, return_exceptions=True)
+        # 并发执行所有任务
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+    finally:
+        close = getattr(async_firecrawl, "close", None)
+        if callable(close):
+            maybe = close()
+            if inspect.isawaitable(maybe):
+                await maybe
 
     for i, result in enumerate(results, 1):
         if isinstance(result, Exception):
