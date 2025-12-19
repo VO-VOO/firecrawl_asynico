@@ -215,6 +215,7 @@ async def main_async():
                 if asyncio.iscoroutine(maybe):
                     await maybe
             except Exception:
+                # 关闭失败不影响整体流程，忽略清理异常
                 pass
 
     for i, result in enumerate(results, 1):
