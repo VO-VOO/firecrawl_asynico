@@ -48,6 +48,9 @@ class RetryContext:
     index: int
     total: int
 
+    def mark_elapsed(self) -> None:
+        self.result.elapsed = time.time() - self.start_time
+
 
 async def handle_retry(message: str, attempt: int, is_timeout: bool, ctx: RetryContext) -> bool:
     """处理重试逻辑，返回是否继续重试；失败终止时由调用方设置结果"""
@@ -59,7 +62,7 @@ async def handle_retry(message: str, attempt: int, is_timeout: bool, ctx: RetryC
         await asyncio.sleep(RETRY_DELAY)
         return True
 
-    ctx.result.elapsed = time.time() - ctx.start_time
+    ctx.mark_elapsed()
     if is_timeout:
         print(f"[{ctx.index}/{ctx.total}] ❌ 失败: 请求超时")
     else:
@@ -123,7 +126,7 @@ async def scrape_single_article(async_firecrawl: AsyncFirecrawl, semaphore, inde
                         f.write(doc.markdown)
 
                     result.success = True
-                    result.elapsed = time.time() - start_time
+                    ctx.mark_elapsed()
                     print(f"[{index}/{total}] ✓ 成功 ({result.elapsed:.1f}s): {filepath.name}")
                     return result
 
@@ -143,11 +146,11 @@ async def scrape_single_article(async_firecrawl: AsyncFirecrawl, semaphore, inde
 
         except Exception as e:
             result.error = str(e)
-            result.elapsed = time.time() - start_time
+            ctx.mark_elapsed()
             print(f"[{index}/{total}] ❌ 异常: {str(e)[:100]}")
             return result
 
-    result.elapsed = time.time() - start_time
+    ctx.mark_elapsed()
     return result
 
 
@@ -230,19 +233,16 @@ async def main_async():
         # 并发执行所有任务
         results = await asyncio.gather(*tasks, return_exceptions=True)
     finally:
-        try:
-            aclose = getattr(async_firecrawl, "aclose", None)
-            if callable(aclose):
-                maybe_result = aclose()
-                if asyncio.iscoroutine(maybe_result):
-                    await maybe_result
+        async def _maybe_close(method):
+            if not callable(method):
                 return
+            result_obj = method()
+            if asyncio.iscoroutine(result_obj):
+                await result_obj
 
-            close = getattr(async_firecrawl, "close", None)
-            if callable(close):
-                close_result = close()
-                if asyncio.iscoroutine(close_result):
-                    await close_result
+        try:
+            await _maybe_close(getattr(async_firecrawl, "aclose", None))
+            await _maybe_close(getattr(async_firecrawl, "close", None))
         except Exception:
             # firecrawl-py 暴露 async close；兼容可能存在同步 close/aclose 的版本或第三方实现，关闭失败不影响整体流程（此处仅提示，不中断）
             print("关闭 AsyncFirecrawl 客户端失败，已忽略。")
