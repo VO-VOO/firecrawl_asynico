@@ -233,16 +233,19 @@ async def main_async():
         # 并发执行所有任务
         results = await asyncio.gather(*tasks, return_exceptions=True)
     finally:
-        async def _maybe_close(method):
-            if not callable(method):
-                return
+        async def _maybe_close(method) -> bool:
+            if method is None or not callable(method):
+                return False
             result_obj = method()
             if asyncio.iscoroutine(result_obj):
                 await result_obj
+            return True
 
         try:
-            await _maybe_close(getattr(async_firecrawl, "aclose", None))
-            await _maybe_close(getattr(async_firecrawl, "close", None))
+            # 优先使用异步 aclose，如不存在则尝试 close
+            called = await _maybe_close(getattr(async_firecrawl, "aclose", None))
+            if not called:
+                await _maybe_close(getattr(async_firecrawl, "close", None))
         except Exception:
             # firecrawl-py 暴露 async close；兼容可能存在同步 close/aclose 的版本或第三方实现，关闭失败不影响整体流程（此处仅提示，不中断）
             print("关闭 AsyncFirecrawl 客户端失败，已忽略。")
