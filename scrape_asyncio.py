@@ -101,26 +101,23 @@ async def scrape_single_article(async_firecrawl: AsyncFirecrawl, semaphore, inde
                     return result
 
                 except asyncio.TimeoutError:
-                    err_msg = "请求超时"
-                    is_timeout = True
-                except (ClientError, Exception) as e:
-                    err_msg = str(e)
-                    is_timeout = False
-
-                if attempt < RETRY_COUNT - 1:
-                    if is_timeout:
+                    if attempt < RETRY_COUNT - 1:
                         print(f"[{index}/{total}] 超时，第{attempt+1}次尝试失败，{RETRY_DELAY}秒后重试...")
+                        await asyncio.sleep(RETRY_DELAY)
                     else:
-                        print(f"[{index}/{total}] 第{attempt+1}次尝试失败: {err_msg[:100]}，{RETRY_DELAY}秒后重试...")
-                    await asyncio.sleep(RETRY_DELAY)
-                else:
-                    result.error = err_msg
-                    result.elapsed = time.time() - start_time
-                    if is_timeout:
+                        result.error = "请求超时"
+                        result.elapsed = time.time() - start_time
                         print(f"[{index}/{total}] ❌ 失败: 请求超时")
+                        return result
+                except (ClientError, Exception) as e:
+                    if attempt < RETRY_COUNT - 1:
+                        print(f"[{index}/{total}] 第{attempt+1}次尝试失败: {str(e)[:100]}，{RETRY_DELAY}秒后重试...")
+                        await asyncio.sleep(RETRY_DELAY)
                     else:
-                        print(f"[{index}/{total}] ❌ 失败: {err_msg[:100]}")
-                    return result
+                        result.error = str(e)
+                        result.elapsed = time.time() - start_time
+                        print(f"[{index}/{total}] ❌ 失败: {str(e)[:100]}")
+                        return result
 
         except Exception as e:
             result.error = str(e)
@@ -211,9 +208,12 @@ async def main_async():
         # 并发执行所有任务
         results = await asyncio.gather(*tasks, return_exceptions=True)
     finally:
-        if hasattr(async_firecrawl, "close"):
+        close = getattr(async_firecrawl, "close", None)
+        if callable(close):
             try:
-                await async_firecrawl.close()  # type: ignore[attr-defined]
+                maybe = close()
+                if asyncio.iscoroutine(maybe):
+                    await maybe
             except Exception:
                 pass
 
