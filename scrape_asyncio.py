@@ -6,9 +6,9 @@
 
 import json
 import os
-import sys
 import time
 import asyncio
+import aiofiles
 from pathlib import Path
 from firecrawl import AsyncFirecrawl
 from datetime import datetime
@@ -17,14 +17,14 @@ from typing import List, Dict, Optional
 from aiohttp import ClientError
 
 # 配置
-FIRECRAWL_URL = "http://localhost:8547"  # 本地部署的Firecrawl
+FIRECRAWL_URL = os.environ.get("FIRECRAWL_URL", "http://localhost:8547")
+FIRECRAWL_API_KEY = os.environ.get("FIRECRAWL_API_KEY", "test")  # 本地部署可使用任意字符串
 BASE_DIR = Path(__file__).parent
 OUTPUT_DIR = BASE_DIR
 ARTICLES_FILE = BASE_DIR / "cbre_data_center_articles.json"
 
 # 并发配置
-MAX_CONCURRENT = 15  # 推荐值: 2×CPU核心数 = 16
-SEMAPHORE_LIMIT = 15  # 信号量限制，控制同时进行的任务数
+MAX_CONCURRENT = 15  # 推荐值: 2×CPU核心数 = 16，同时用于信号量限制
 RETRY_COUNT = 3  # 失败重试次数
 RETRY_DELAY = 2.0  # 重试延迟（秒）
 
@@ -40,15 +40,55 @@ class ScrapeResult:
     elapsed: float = 0.0
 
 
-def load_articles() -> List[Dict]:
-    """从JSON文件加载文章列表"""
+def load_articles() -> List[Dict[str, str]]:
+    """
+    从JSON文件加载文章列表
+
+    Returns:
+        文章列表，每个文章包含 'title' 和 'url' 键
+
+    Raises:
+        FileNotFoundError: 文件不存在
+        ValueError: JSON 格式不正确
+    """
     with open(ARTICLES_FILE, 'r', encoding='utf-8') as f:
         data = json.load(f)
-    return data['articles']
+
+    if 'articles' not in data:
+        raise ValueError("JSON 文件缺少 'articles' 键")
+
+    articles = data['articles']
+    for i, article in enumerate(articles):
+        if 'title' not in article or 'url' not in article:
+            raise ValueError(f"文章 {i} 缺少 'title' 或 'url' 键")
+
+    return articles
 
 
-async def scrape_single_article(semaphore, index: int, title: str, url: str, total: int, output_dir: str) -> ScrapeResult:
-    """异步爬取单篇文章"""
+async def scrape_single_article(
+    semaphore: asyncio.Semaphore,
+    client: AsyncFirecrawl,
+    index: int,
+    title: str,
+    url: str,
+    total: int,
+    output_dir: str
+) -> ScrapeResult:
+    """
+    异步爬取单篇文章
+
+    Args:
+        semaphore: 并发控制信号量
+        client: 共享的 AsyncFirecrawl 客户端
+        index: 文章索引
+        title: 文章标题
+        url: 文章 URL
+        total: 总文章数
+        output_dir: 输出目录
+
+    Returns:
+        ScrapeResult: 爬取结果
+    """
     result = ScrapeResult(
         index=index,
         title=title,
@@ -62,16 +102,10 @@ async def scrape_single_article(semaphore, index: int, title: str, url: str, tot
         try:
             print(f"[{index}/{total}] 开始爬取: {title[:60]}...")
 
-            # 初始化AsyncFirecrawl客户端（共享实例），本地firecrawl的api_key可以是任意字符串。
-            async_firecrawl = AsyncFirecrawl(
-                api_key="test",
-                api_url=FIRECRAWL_URL
-            )
-
             # 爬取文章（带重试）
             for attempt in range(RETRY_COUNT):
                 try:
-                    doc = await async_firecrawl.scrape(
+                    doc = await client.scrape(
                         url,
                         formats=["markdown"],
                         only_main_content=True,
@@ -80,29 +114,32 @@ async def scrape_single_article(semaphore, index: int, title: str, url: str, tot
                     if not doc or not doc.markdown:
                         raise ValueError("无法获取内容")
 
-                    # 创建安全的文件名
+                    # 创建安全的文件名（移除可能导致问题的字符）
                     safe_title = "".join(
                         c for c in title
-                        if c.isalnum() or c in (' ', '-', '_', '，', '。', '？', '！', '&', ':', '’', '"', "'")
+                        if c.isalnum() or c in (' ', '-', '_', '，', '。', '？', '！', '&', ':')
                     ).rstrip()
                     safe_title = safe_title[:100]
                     filename = f"{index:03d}_{safe_title}.md"
                     filepath = Path(output_dir) / filename
 
-                    # 写入文件
-                    with open(filepath, 'w', encoding='utf-8') as f:
-                        f.write(f"# {index}. {title}\n\n")
-                        f.write(f"**URL:** {url}\n\n")
-                        f.write(f"**抓取时间:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-                        f.write("---\n\n")
-                        f.write(doc.markdown)
+                    # 异步写入文件
+                    content = (
+                        f"# {index}. {title}\n\n"
+                        f"**URL:** {url}\n\n"
+                        f"**抓取时间:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                        "---\n\n"
+                        f"{doc.markdown}"
+                    )
+                    async with aiofiles.open(filepath, 'w', encoding='utf-8') as f:
+                        await f.write(content)
 
                     result.success = True
                     result.elapsed = time.time() - start_time
                     print(f"[{index}/{total}] ✓ 成功 ({result.elapsed:.1f}s): {filepath.name}")
                     return result
 
-                except (ClientError, asyncio.TimeoutError, Exception) as e:
+                except (ClientError, asyncio.TimeoutError, ValueError, ConnectionError) as e:
                     if attempt < RETRY_COUNT - 1:
                         print(f"[{index}/{total}] 第{attempt+1}次尝试失败: {str(e)[:100]}，{RETRY_DELAY}秒后重试...")
                         await asyncio.sleep(RETRY_DELAY)
@@ -112,7 +149,7 @@ async def scrape_single_article(semaphore, index: int, title: str, url: str, tot
                         print(f"[{index}/{total}] ❌ 失败: {str(e)[:100]}")
                         return result
 
-        except Exception as e:
+        except (ClientError, asyncio.TimeoutError, ValueError, ConnectionError, OSError) as e:
             result.error = str(e)
             result.elapsed = time.time() - start_time
             print(f"[{index}/{total}] ❌ 异常: {str(e)[:100]}")
@@ -139,7 +176,12 @@ async def main_async():
         print("请先运行 playwright 脚本来提取文章列表")
         return
 
-    articles = load_articles()
+    try:
+        articles = load_articles()
+    except ValueError as e:
+        print(f"❌ 错误: {e}")
+        return
+
     total = len(articles)
     print(f"总共需要爬取 {total} 篇文章\n")
 
@@ -149,12 +191,12 @@ async def main_async():
 
     if existing_files:
         # 获取已成功的索引
-        existing_indices = set()
+        existing_indices: set[int] = set()
         for file in existing_files:
             try:
                 idx = int(file.name[:3])
                 existing_indices.add(idx)
-            except:
+            except (ValueError, IndexError):
                 pass
 
         # 过滤掉已成功的文章
@@ -176,7 +218,13 @@ async def main_async():
         return
 
     # 创建信号量限制并发数
-    semaphore = asyncio.Semaphore(SEMAPHORE_LIMIT)
+    semaphore = asyncio.Semaphore(MAX_CONCURRENT)
+
+    # 创建共享的 AsyncFirecrawl 客户端
+    client = AsyncFirecrawl(
+        api_key=FIRECRAWL_API_KEY,
+        api_url=FIRECRAWL_URL
+    )
 
     # 统计信息
     success_count = 0
@@ -186,7 +234,7 @@ async def main_async():
 
     # 创建所有异步任务
     tasks = [
-        scrape_single_article(semaphore, index, title, url, total, OUTPUT_DIR)
+        scrape_single_article(semaphore, client, index, title, url, total, OUTPUT_DIR)
         for index, title, url, _, _ in pending_articles
     ]
 
@@ -216,7 +264,6 @@ async def main_async():
 
     # 最终统计
     total_time = time.time() - start_time_total
-    final_success = len(existing_files) + success_count
 
     print("\n" + "=" * 70)
     print("异步爬取完成！")
@@ -226,7 +273,7 @@ async def main_async():
     print(f"本轮成功: {success_count}")
     print(f"本轮失败: {failed_count}")
     print(f"总用时: {total_time:.1f}秒")
-    print(f"平均用时: {total_time/total:.2f}秒/篇")
+    print(f"平均用时: {total_time/max(len(pending_articles), 1):.2f}秒/篇")
     print(f"最大并发数: {MAX_CONCURRENT}")
     print(f"输出目录: {OUTPUT_DIR}")
 
@@ -248,7 +295,7 @@ def main():
     print(f"⚙️  配置:")
     print(f"  • 最大并发数: {MAX_CONCURRENT}")
     print(f"  • 重试次数: {RETRY_COUNT}")
-    print(f"  • 输出目录: {OUTPUT_DIR}")  
+    print(f"  • 输出目录: {OUTPUT_DIR}")
 
     # 运行异步主函数
     asyncio.run(main_async())

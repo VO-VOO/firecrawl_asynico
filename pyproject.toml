@@ -7,4 +7,6 @@ requires-python = ">=3.11"
 dependencies = [
     "firecrawl-py>=4.6.0",
     "requests>=2.32.5",
+    "aiohttp>=3.9.0",
+    "aiofiles>=24.1.0",
 ]
