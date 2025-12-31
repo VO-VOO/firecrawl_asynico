@@ -57,10 +57,10 @@ export function ControlBar({
           disabled={disabled || !importedFile}
           className={cn(
             'px-6 py-2.5 rounded-xl font-medium text-sm',
-            'bg-accent/90 backdrop-blur-md text-white',
-            'border border-accent/50',
-            'hover:bg-accent hover:border-accent/70',
-            'shadow-[0_2px_12px_rgba(255,122,89,0.3)]',
+            'bg-violet-500/90 backdrop-blur-md text-white',
+            'border border-violet-500/50',
+            'hover:bg-violet-500 hover:border-violet-400/70',
+            'shadow-[0_2px_12px_rgba(139,92,246,0.4)]',
             (disabled || !importedFile) && 'opacity-50 cursor-not-allowed'
           )}
           whileHover={disabled || !importedFile ? {} : { scale: 1.02 }}
@@ -90,7 +90,7 @@ export function ControlBar({
       {/* Status Indicator */}
       {isRunning ? (
         <div className="flex items-center gap-2 text-sm text-secondary">
-          <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+          <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse shadow-[0_0_8px_rgba(139,92,246,0.8)]" />
           运行中...
         </div>
       ) : isCompleted ? (

@@ -14,20 +14,20 @@ export interface TaskItemProps {
 
 const statusConfig: Record<TaskStatus, { dot: string; bar: string }> = {
   pending: {
-    dot: 'bg-secondary',
-    bar: 'bg-white/30',
+    dot: 'bg-white/40',
+    bar: 'bg-white/20',
   },
   running: {
-    dot: 'bg-accent animate-pulse',
-    bar: 'bg-white',
+    dot: 'bg-violet-400 animate-pulse shadow-[0_0_6px_rgba(139,92,246,0.8)]',
+    bar: 'bg-gradient-to-r from-violet-500 to-violet-400',
   },
   success: {
-    dot: 'bg-green-500',
-    bar: 'bg-green-500',
+    dot: 'bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.6)]',
+    bar: 'bg-gradient-to-r from-green-500 to-green-400',
   },
   failed: {
-    dot: 'bg-error',
-    bar: 'bg-error',
+    dot: 'bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.6)]',
+    bar: 'bg-gradient-to-r from-red-500 to-red-400',
   },
 }
 
@@ -47,14 +47,18 @@ export function TaskItem({
   return (
     <motion.div
       className={cn(
-        'bg-black/20 rounded-xl p-3 border border-white/5',
+        'bg-[rgba(15,10,25,0.5)] rounded-xl p-3',
+        'border border-white/[0.06]',
         'flex flex-col gap-2 cursor-pointer',
-        'hover:border-white/10 transition-colors',
         className
       )}
       onClick={onClick}
-      whileHover={{ scale: 1.02 }}
-      transition={{ duration: 0.15 }}
+      whileHover={{
+        scale: 1.02,
+        borderColor: 'rgba(139, 92, 246, 0.4)',
+        boxShadow: '0 4px 20px rgba(139, 92, 246, 0.1), 0 0 30px rgba(139, 92, 246, 0.08)',
+      }}
+      transition={{ duration: 0.2 }}
     >
       <div className="flex justify-between items-center">
         <span className="text-xs text-secondary font-mono truncate flex-1 mr-2">

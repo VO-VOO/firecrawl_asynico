@@ -24,12 +24,14 @@ export function ProgressCard({
           value={percentage}
           size={180}
           strokeWidth={14}
+          trackColor="rgba(139, 92, 246, 0.12)"
+          useGradient
           label={
             <div className="text-center">
-              <div className="text-4xl font-bold text-primary">
+              <div className="text-4xl font-bold text-white">
                 {Math.round(percentage)}%
               </div>
-              <div className="text-sm text-secondary mt-1">
+              <div className="text-sm text-white/50 mt-1">
                 {completed.toLocaleString()} / {total.toLocaleString()}
               </div>
             </div>

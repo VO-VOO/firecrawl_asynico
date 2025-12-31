@@ -91,14 +91,14 @@ function FilterButton({
     <button
       onClick={onClick}
       className={cn(
-        'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+        'px-4 py-2 rounded-lg text-sm font-medium transition-all border border-transparent',
         active
           ? variant === 'success'
-            ? 'bg-green-500/20 text-green-500'
+            ? 'bg-green-500/20 text-green-500 border-green-500/30'
             : variant === 'error'
-              ? 'bg-red-500/20 text-red-500'
-              : 'bg-accent/20 text-accent'
-          : 'bg-white/5 text-secondary hover:bg-white/10'
+              ? 'bg-red-500/20 text-red-500 border-red-500/30'
+              : 'bg-violet-500/20 text-violet-400 border-violet-500/30'
+          : 'bg-white/5 text-secondary hover:bg-violet-500/10 hover:text-white hover:border-violet-500/20'
       )}
     >
       {children}
@@ -111,8 +111,8 @@ function TaskRow({ task }: { task: TaskData }) {
   const statusConfig = {
     success: { color: 'text-green-500', bg: 'bg-green-500', label: '成功' },
     failed: { color: 'text-red-500', bg: 'bg-red-500', label: '失败' },
-    running: { color: 'text-accent', bg: 'bg-accent', label: '运行中' },
-    pending: { color: 'text-secondary', bg: 'bg-secondary', label: '等待中' },
+    running: { color: 'text-violet-400', bg: 'bg-violet-400 shadow-[0_0_6px_rgba(139,92,246,0.8)]', label: '运行中' },
+    pending: { color: 'text-secondary', bg: 'bg-white/40', label: '等待中' },
   }
 
   const config = statusConfig[task.status]
@@ -120,9 +120,10 @@ function TaskRow({ task }: { task: TaskData }) {
   return (
     <div
       className={cn(
-        'flex items-center gap-4 p-4 rounded-lg',
-        'bg-surface border border-white/5',
-        'hover:border-white/10 transition-colors'
+        'flex items-center gap-4 p-4 rounded-xl',
+        'bg-[rgba(15,10,25,0.5)] border border-white/[0.06]',
+        'hover:border-violet-500/30 hover:shadow-[0_0_15px_rgba(139,92,246,0.1)]',
+        'transition-all'
       )}
     >
       {/* Status Indicator */}

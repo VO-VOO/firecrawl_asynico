@@ -40,7 +40,7 @@ export function ActiveTasksCard({
           <div className="flex items-center gap-3 text-xs">
             {runningCount > 0 && (
               <span className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse shadow-[0_0_6px_rgba(139,92,246,0.8)]" />
                 运行中 {runningCount}
               </span>
             )}
@@ -59,9 +59,11 @@ export function ActiveTasksCard({
           onClick={onViewAll}
           className={cn(
             'text-xs text-secondary',
-            'bg-white/5 px-3 py-1 rounded-full',
-            'hover:bg-accent hover:text-white',
-            'transition-colors'
+            'bg-white/5 px-3 py-1.5 rounded-full',
+            'border border-transparent',
+            'hover:bg-violet-500/20 hover:text-white hover:border-violet-500/30',
+            'hover:shadow-[0_0_12px_rgba(139,92,246,0.2)]',
+            'transition-all'
           )}
         >
           {hasMore ? `查看全部 (${tasks.length})` : '查看全部'}

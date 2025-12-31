@@ -85,19 +85,21 @@ export function SettingsPage() {
               }
               placeholder="选择或输入输出目录路径"
               className={cn(
-                'flex-1 px-4 py-2 rounded-lg',
-                'bg-surface border border-white/10',
+                'flex-1 px-4 py-2.5 rounded-xl',
+                'bg-[rgba(15,10,25,0.6)] border border-white/[0.08]',
                 'text-primary placeholder:text-secondary',
-                'focus:outline-none focus:border-accent'
+                'focus:outline-none focus:border-violet-500/50 focus:shadow-[0_0_12px_rgba(139,92,246,0.15)]',
+                'transition-all'
               )}
             />
             <button
               onClick={handleSelectDir}
               className={cn(
-                'px-4 py-2 rounded-lg',
-                'bg-white/5 text-secondary',
-                'hover:bg-white/10 hover:text-white',
-                'transition-colors'
+                'px-4 py-2.5 rounded-xl',
+                'bg-white/[0.06] text-secondary border border-transparent',
+                'hover:bg-violet-500/15 hover:text-white hover:border-violet-500/30',
+                'hover:shadow-[0_0_12px_rgba(139,92,246,0.15)]',
+                'transition-all'
               )}
             >
               选择...
@@ -117,10 +119,11 @@ export function SettingsPage() {
             }
             placeholder="http://localhost:8547"
             className={cn(
-              'w-full px-4 py-2 rounded-lg',
-              'bg-surface border border-white/10',
+              'w-full px-4 py-2.5 rounded-xl',
+              'bg-[rgba(15,10,25,0.6)] border border-white/[0.08]',
               'text-primary placeholder:text-secondary',
-              'focus:outline-none focus:border-accent'
+              'focus:outline-none focus:border-violet-500/50 focus:shadow-[0_0_12px_rgba(139,92,246,0.15)]',
+              'transition-all'
             )}
           />
           <p className="text-xs text-secondary">Firecrawl 服务地址</p>
@@ -137,10 +140,11 @@ export function SettingsPage() {
             }
             placeholder="输入 API Key"
             className={cn(
-              'w-full px-4 py-2 rounded-lg',
-              'bg-surface border border-white/10',
+              'w-full px-4 py-2.5 rounded-xl',
+              'bg-[rgba(15,10,25,0.6)] border border-white/[0.08]',
               'text-primary placeholder:text-secondary',
-              'focus:outline-none focus:border-accent'
+              'focus:outline-none focus:border-violet-500/50 focus:shadow-[0_0_12px_rgba(139,92,246,0.15)]',
+              'transition-all'
             )}
           />
           <p className="text-xs text-secondary">
@@ -154,11 +158,12 @@ export function SettingsPage() {
             onClick={handleSave}
             disabled={isSaving}
             className={cn(
-              'px-6 py-2 rounded-lg font-medium',
-              'bg-accent text-white',
-              'hover:bg-accent/80',
+              'px-6 py-2.5 rounded-xl font-medium',
+              'bg-violet-500/90 text-white border border-violet-500/50',
+              'hover:bg-violet-500 hover:border-violet-400/70',
+              'hover:shadow-[0_0_20px_rgba(139,92,246,0.3)]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
-              'transition-colors'
+              'transition-all'
             )}
           >
             {isSaving ? '保存中...' : '保存配置'}

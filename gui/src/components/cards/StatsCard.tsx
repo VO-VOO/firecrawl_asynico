@@ -29,8 +29,8 @@ export function StatsCard({
       <button
         onClick={onSuccessClick}
         className={cn(
-          'text-center p-4 rounded-lg transition-colors',
-          onSuccessClick && 'hover:bg-white/5 cursor-pointer'
+          'text-center p-6 rounded-xl transition-all border border-transparent',
+          onSuccessClick && 'hover:bg-violet-500/10 hover:border-violet-500/30 hover:shadow-[0_0_20px_rgba(139,92,246,0.15)] cursor-pointer'
         )}
       >
         <div className="text-lg text-secondary mb-2">成功</div>
@@ -50,8 +50,8 @@ export function StatsCard({
       <button
         onClick={onFailedClick}
         className={cn(
-          'text-center p-4 rounded-lg transition-colors',
-          onFailedClick && 'hover:bg-white/5 cursor-pointer'
+          'text-center p-6 rounded-xl transition-all border border-transparent',
+          onFailedClick && 'hover:bg-violet-500/10 hover:border-violet-500/30 hover:shadow-[0_0_20px_rgba(139,92,246,0.15)] cursor-pointer'
         )}
       >
         <div className="text-lg text-secondary mb-2">失败</div>

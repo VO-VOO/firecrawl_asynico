@@ -24,8 +24,8 @@ export function Sidebar({
     <aside
       className={cn(
         'w-64 flex-shrink-0 flex flex-col',
-        'border-r border-white/[0.08]',
-        'bg-black/40 backdrop-blur-2xl',
+        'border-r border-white/[0.06]',
+        'glass-sidebar',
         'relative z-10',
         className
       )}
@@ -34,15 +34,17 @@ export function Sidebar({
       <div className="h-8 drag-region" />
 
       {/* Logo */}
-      <div className="h-12 flex items-center px-4 drag-region">
-        <div className="text-xl font-bold tracking-tight flex items-center gap-2">
-          <span className="text-accent text-2xl">*</span>
-          Firecrawl
+      <div className="h-14 flex items-center px-5 drag-region">
+        <div className="text-xl font-semibold tracking-tight flex items-center gap-2">
+          <span className="text-violet-400 text-2xl">*</span>
+          <span className="bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
+            Firecrawl
+          </span>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-2 py-6 space-y-1 no-drag">
+      <nav className="flex-1 px-3 py-6 space-y-1 no-drag">
         {navItems.map((item) => {
           const isActive = activeItem === item.key
 
@@ -51,16 +53,16 @@ export function Sidebar({
               key={item.key}
               onClick={() => onNavigate?.(item.key)}
               className={cn(
-                'w-full flex items-center px-3 py-2',
-                'text-sm font-medium rounded-md',
-                'transition-colors relative',
+                'w-full flex items-center px-3 py-2.5',
+                'text-sm font-medium rounded-lg',
+                'transition-all duration-200 relative',
                 isActive
-                  ? 'text-white bg-white/5'
-                  : 'text-secondary hover:bg-white/5 hover:text-white'
+                  ? 'text-white bg-violet-500/20 border border-violet-500/30'
+                  : 'text-white/60 hover:bg-white/[0.06] hover:text-white border border-transparent'
               )}
             >
               {isActive && (
-                <GlowDot className="absolute left-1" />
+                <GlowDot className="absolute left-1.5" color="violet" />
               )}
               <span className={cn(isActive ? 'ml-3' : 'ml-0')}>
                 {item.label}

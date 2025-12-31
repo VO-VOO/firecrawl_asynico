@@ -22,7 +22,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    backgroundColor: '#0D0D0D',
+    backgroundColor: '#0f0a1a',
     titleBarStyle: 'hiddenInset',
     vibrancy: 'sidebar',
     trafficLightPosition: { x: 20, y: 20 },
@@ -36,7 +36,20 @@ function createWindow() {
   const isDev = !app.isPackaged
 
   if (isDev) {
-    mainWindow.loadURL('http://localhost:5173')
+    // Try multiple ports in case 5173 is in use
+    const ports = [5173, 5174, 5175, 5176]
+    const tryPort = async (portIndex) => {
+      if (portIndex >= ports.length) {
+        console.error('Could not connect to dev server on any port')
+        return
+      }
+      const port = ports[portIndex]
+      mainWindow.loadURL(`http://localhost:${port}`).catch(() => {
+        console.log(`Port ${port} failed, trying next...`)
+        setTimeout(() => tryPort(portIndex + 1), 500)
+      })
+    }
+    tryPort(0)
     // 按需打开 DevTools: mainWindow.webContents.openDevTools()
   } else {
     mainWindow.loadFile(join(__dirname, '../dist/index.html'))
