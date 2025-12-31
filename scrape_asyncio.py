@@ -38,6 +38,8 @@ GUI_MODE = os.environ.get("GUI_MODE", "false").lower() == "true"
 
 # 全局停止标志
 _stop_requested = False
+# 存储所有正在运行的任务，用于取消
+_running_tasks: set = set()
 
 
 def emit_json(data: dict):
@@ -103,13 +105,46 @@ def setup_signal_handlers():
     global _stop_requested
 
     def handle_signal(signum, frame):
-        global _stop_requested
+        global _stop_requested, _running_tasks
         _stop_requested = True
         if not GUI_MODE:
             print("\n收到停止信号，正在优雅退出...")
 
+        # 取消所有正在运行的任务
+        for task in _running_tasks:
+            if not task.done():
+                task.cancel()
+
     signal.signal(signal.SIGTERM, handle_signal)
     signal.signal(signal.SIGINT, handle_signal)
+
+
+def setup_async_signal_handlers(loop: asyncio.AbstractEventLoop):
+    """在 asyncio 事件循环中设置信号处理器"""
+    global _stop_requested, _running_tasks
+
+    def handle_async_signal():
+        global _stop_requested, _running_tasks
+        _stop_requested = True
+        if not GUI_MODE:
+            print("\n收到停止信号，正在取消所有任务...")
+
+        # 取消所有正在运行的任务
+        cancelled_count = 0
+        for task in _running_tasks:
+            if not task.done():
+                task.cancel()
+                cancelled_count += 1
+
+        if not GUI_MODE and cancelled_count > 0:
+            print(f"已请求取消 {cancelled_count} 个任务")
+
+    try:
+        loop.add_signal_handler(signal.SIGINT, handle_async_signal)
+        loop.add_signal_handler(signal.SIGTERM, handle_async_signal)
+    except NotImplementedError:
+        # Windows 不支持 add_signal_handler，使用传统方式
+        pass
 
 
 @dataclass
@@ -295,6 +330,15 @@ async def scrape_single_article(
                         emit_task_update(index, url, title, "failed", 0, error=result.error, elapsed=result.elapsed)
                         return result
 
+        except asyncio.CancelledError:
+            # 任务被取消（用户点击停止）
+            result.error = "Cancelled by user"
+            result.elapsed = time.time() - start_time
+            if not GUI_MODE:
+                print(f"[{index}/{total}] ⏹ 已取消: {title[:40]}...")
+            emit_task_update(index, url, title, "failed", 0, error=result.error, elapsed=result.elapsed)
+            raise  # 重新抛出以通知 gather
+
         except (ClientError, asyncio.TimeoutError, ValueError, ConnectionError, OSError) as e:
             result.error = str(e)
             result.elapsed = time.time() - start_time
@@ -325,12 +369,25 @@ async def process_batch(
     Returns:
         本批次的爬取结果列表
     """
-    tasks = [
+    global _running_tasks
+
+    # 创建任务并追踪它们
+    coroutines = [
         scrape_single_article(semaphore, client, index, title, url, total, OUTPUT_DIR)
         for index, title, url in batch
     ]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    return results
+    tasks = [asyncio.create_task(coro) for coro in coroutines]
+
+    # 将任务添加到全局集合
+    _running_tasks.update(tasks)
+
+    try:
+        # 等待所有任务完成，允许异常传播
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        return results
+    finally:
+        # 完成后从全局集合移除
+        _running_tasks.difference_update(tasks)
 
 
 async def process_articles_in_batches(
@@ -373,6 +430,13 @@ async def process_articles_in_batches(
 async def main_async():
     """异步主函数"""
     global _stop_requested
+
+    # 在事件循环中设置异步信号处理器
+    try:
+        loop = asyncio.get_running_loop()
+        setup_async_signal_handlers(loop)
+    except Exception:
+        pass  # 如果失败，使用传统信号处理器
 
     start_time_total = time.time()
 
@@ -474,7 +538,12 @@ async def main_async():
 
             processed += 1
 
-            if isinstance(result, Exception):
+            if isinstance(result, asyncio.CancelledError):
+                # 任务被取消，标记为失败
+                failed_count += 1
+                if not GUI_MODE:
+                    print(f"[{idx + 1}] ⏹ 任务已取消")
+            elif isinstance(result, Exception):
                 failed_count += 1
                 if not GUI_MODE:
                     print(f"[{idx + 1}] ❌ 异常: {str(result)[:100]}")
