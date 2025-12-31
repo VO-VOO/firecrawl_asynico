@@ -34,13 +34,15 @@
 
 ### 1.3 当前状态
 
-| 模块 | 状态 | 说明 |
-|------|------|------|
-| 项目脚手架 | 已完成 | Electron + React + Vite + Tailwind |
-| UI 静态布局 | 已完成 | Bento Grid + Hover Glow 基础实现 |
-| Python 后端 | 已完成 | asyncio 异步爬虫脚本 |
-| IPC 通信 | 待开发 | preload.js 框架已搭建 |
-| 数据流联调 | 待开发 | - |
+| 模块        | 状态       | 说明                               |
+| ----------- | ---------- | ---------------------------------- |
+| 项目脚手架  | ✅ 已完成   | Electron + React + Vite + Tailwind |
+| UI 静态布局 | ✅ 已完成   | Bento Grid + Hover Glow 基础实现   |
+| Python 后端 | ✅ 已完成   | asyncio 异步爬虫脚本 + GUI_MODE    |
+| IPC 通信    | ✅ 已完成   | preload.js + main.js 完整实现      |
+| 状态管理    | ✅ 已完成   | Zustand + immer                    |
+| Bug 修复    | 🔄 进行中  | 任务列表状态、停止按钮             |
+| 功能扩展    | ⏳ 待开发  | JSON导入、任务列表页、设置页       |
 
 ---
 
@@ -48,28 +50,28 @@
 
 ### 2.1 前端框架
 
-| 技术 | 版本 | 选型理由 |
-|------|------|----------|
-| **Electron** | 39.x | 跨平台桌面应用框架，支持 macOS 原生特性（vibrancy、trafficLightPosition） |
-| **React** | 19.x | 组件化开发，生态成熟，配合 Hooks 实现响应式状态管理 |
-| **TypeScript** | 5.9.x | 类型安全，提升代码可维护性和 IDE 智能提示 |
-| **Vite** | 7.x | 极速 HMR，优化开发体验 |
+| 技术                 | 版本  | 选型理由                                                                  |
+| -------------------- | ----- | ------------------------------------------------------------------------- |
+| **Electron**   | 39.x  | 跨平台桌面应用框架，支持 macOS 原生特性（vibrancy、trafficLightPosition） |
+| **React**      | 19.x  | 组件化开发，生态成熟，配合 Hooks 实现响应式状态管理                       |
+| **TypeScript** | 5.9.x | 类型安全，提升代码可维护性和 IDE 智能提示                                 |
+| **Vite**       | 7.x   | 极速 HMR，优化开发体验                                                    |
 
 ### 2.2 样式方案
 
-| 技术 | 选型理由 |
-|------|----------|
-| **Tailwind CSS** | 原子化 CSS，快速实现设计稿，配合 CSS Variables 支持主题切换 |
-| **Framer Motion** | 声明式动画库，实现 Hover Glow、卡片过渡等高级动效 |
-| **clsx + tailwind-merge** | 条件类名组合，避免样式冲突 |
+| 技术                            | 选型理由                                                    |
+| ------------------------------- | ----------------------------------------------------------- |
+| **Tailwind CSS**          | 原子化 CSS，快速实现设计稿，配合 CSS Variables 支持主题切换 |
+| **Framer Motion**         | 声明式动画库，实现 Hover Glow、卡片过渡等高级动效           |
+| **clsx + tailwind-merge** | 条件类名组合，避免样式冲突                                  |
 
 ### 2.3 后端通信
 
-| 技术 | 选型理由 |
-|------|----------|
-| **child_process** | Node.js 原生模块，启动/管理 Python 子进程 |
+| 技术                          | 选型理由                                          |
+| ----------------------------- | ------------------------------------------------- |
+| **child_process**       | Node.js 原生模块，启动/管理 Python 子进程         |
 | **JSON Lines (NDJSON)** | Python 输出格式，支持流式解析，每行一个 JSON 对象 |
-| **IPC (contextBridge)** | Electron 安全通信方案，隔离渲染进程与主进程 |
+| **IPC (contextBridge)** | Electron 安全通信方案，隔离渲染进程与主进程       |
 
 ### 2.4 依赖清单
 
@@ -352,14 +354,14 @@ interface TaskItemProps {
 
 ### 6.1 Channel 定义
 
-| Channel | 方向 | 说明 |
-|---------|------|------|
-| `scraper:start` | Renderer -> Main | 启动爬虫 |
-| `scraper:stop` | Renderer -> Main | 停止爬虫 |
-| `scraper:progress` | Main -> Renderer | 进度更新 |
+| Channel                 | 方向             | 说明           |
+| ----------------------- | ---------------- | -------------- |
+| `scraper:start`       | Renderer -> Main | 启动爬虫       |
+| `scraper:stop`        | Renderer -> Main | 停止爬虫       |
+| `scraper:progress`    | Main -> Renderer | 进度更新       |
 | `scraper:task-update` | Main -> Renderer | 单任务状态更新 |
-| `scraper:complete` | Main -> Renderer | 爬取完成 |
-| `scraper:error` | Main -> Renderer | 错误通知 |
+| `scraper:complete`    | Main -> Renderer | 爬取完成       |
+| `scraper:error`       | Main -> Renderer | 错误通知       |
 
 ### 6.2 数据结构
 
@@ -772,50 +774,85 @@ export function cn(...inputs: ClassValue[]) {
 
 ## 9. 开发里程碑
 
-### Phase 1: 组件化重构 (1-2 天)
+### Phase 1: 组件化重构 ✅
 
-- [ ] 创建 `src/components/` 目录结构
-- [ ] 抽离 `Sidebar` 组件
-- [ ] 抽离 `Card` 基础组件
-- [ ] 实现 `CircularProgress` 组件 (SVG)
-- [ ] 抽离 `ProgressCard`、`StatsCard`、`ActiveTasksCard`
-- [ ] 创建 `TaskItem` 组件
+- [x] 创建 `src/components/` 目录结构
+- [x] 抽离 `Sidebar` 组件
+- [x] 抽离 `Card` 基础组件
+- [x] 实现 `CircularProgress` 组件 (SVG)
+- [x] 抽离 `ProgressCard`、`StatsCard`、`ActiveTasksCard`
+- [x] 创建 `TaskItem` 组件
 
-### Phase 2: 状态管理 (0.5 天)
+### Phase 2: 状态管理 ✅
 
-- [ ] 安装 Zustand (`npm install zustand`)
-- [ ] 创建 `scraperStore.ts`
-- [ ] 定义 TypeScript 类型 (`src/types/scraper.ts`)
-- [ ] 连接组件与 Store
+- [x] 安装 Zustand (`npm install zustand`)
+- [x] 创建 `scraperStore.ts`
+- [x] 定义 TypeScript 类型 (`src/types/scraper.ts`)
+- [x] 连接组件与 Store
 
-### Phase 3: IPC 通信 (1-2 天)
+### Phase 3: IPC 通信 ✅
 
-- [ ] 扩展 `preload.js` 暴露完整 API
-- [ ] 实现 `main.js` Python 进程管理
-- [ ] 创建 `useScraperIPC` Hook
-- [ ] 实现节流 Hook (`useThrottle`)
-- [ ] 添加 TypeScript 声明文件 (`window.scraper`)
+- [x] 扩展 `preload.js` 暴露完整 API
+- [x] 实现 `main.js` Python 进程管理
+- [x] 创建 `useScraperIPC` Hook
+- [x] 实现节流 Hook (`useThrottle`)
+- [x] 添加 TypeScript 声明文件 (`window.scraper`)
 
-### Phase 4: Python 适配 (0.5 天)
+### Phase 4: Python 适配 ✅
 
-- [ ] 修改 `scrape_asyncio.py` 支持 `GUI_MODE` 环境变量
-- [ ] 输出 JSON Lines 格式的进度数据
-- [ ] 添加任务级别的状态输出
-- [ ] 支持优雅停止 (SIGTERM 处理)
+- [x] 修改 `scrape_asyncio.py` 支持 `GUI_MODE` 环境变量
+- [x] 输出 JSON Lines 格式的进度数据
+- [x] 添加任务级别的状态输出
+- [x] 支持优雅停止 (SIGTERM 处理)
 
-### Phase 5: 联调与优化 (1-2 天)
+### Phase 5: Bug 修复 (P0) ✅
 
-- [ ] 端到端测试：启动 -> 运行 -> 完成
-- [ ] 性能优化：渲染节流、虚拟列表
-- [ ] 错误处理：进程崩溃、网络异常
-- [ ] UI 微调：动画时序、响应式布局
+- [x] **BUG-001**: 修复爬取完成后任务列表状态未正确更新
+  - 问题：100% 完成后仍显示"运行中 15"
+  - 方案：在 `setComplete()` 中清理 running 状态的任务
+- [x] **BUG-002**: 修复停止按钮无效
+  - 问题：点击停止按钮无法终止爬虫进程
+  - 方案：使用 SIGINT 发送到进程组，添加超时强制 kill
 
-### Phase 6: 功能扩展 (可选)
+### Phase 6: 基础设施建设 (P1) ✅
 
-- [ ] 配置页面 (Settings)
-- [ ] 任务历史记录 (Tasks 页面)
-- [ ] 导出结果报告
-- [ ] 多任务队列支持
+- [x] **INFRA-001**: 实现页面路由系统
+  - 使用 `currentPage` 状态实现条件渲染
+  - 页面：dashboard / tasks / settings
+- [x] **INFRA-002**: 扩展 IPC 通道
+  - `file:select-json` - 选择 JSON 文件
+  - `file:read-json` - 读取 JSON 内容
+  - `config:read` / `config:write` - 配置读写
+  - `dialog:open-directory` - 选择目录
+- [x] **INFRA-003**: 创建配置管理模块
+  - 在 `main.js` 中实现 `.env` 文件读写
+
+### Phase 7: 核心功能开发 (P1) ✅
+
+- [x] **FEAT-001**: JSON 文件导入功能
+  - 仪表盘添加"导入 JSON"按钮
+  - 解析并显示任务数量
+  - 支持自定义 JSON 路径启动爬虫
+- [x] **FEAT-002**: 任务列表页面
+  - 列表形式展示文章标题
+  - 成功绿色/失败红色状态标识
+  - 筛选按钮：全部/成功/失败
+- [x] **FEAT-003**: Dashboard 导航功能
+  - 点击成功数字 → 任务列表（筛选成功）
+  - 点击失败数字 → 任务列表（筛选失败）
+  - "查看全部"按钮跳转
+- [x] **FEAT-004**: 设置页面
+  - OUTPUT_DIR（输出目录）
+  - FIRECRAWL_URL（服务地址）
+  - FIRECRAWL_API_KEY（API 密钥）
+  - 保存到 `.env` 文件
+- [x] **FEAT-005**: 移除侧边栏"爬虫配置"按钮（与设置重复）
+
+### Phase 8: 优化与测试 (P2)
+
+- [ ] UI/UX 优化：页面切换动画、Toast 通知
+- [ ] 端到端测试：导入 → 爬取 → 停止 → 查看结果
+- [ ] 性能优化：虚拟列表（大量任务时）
 
 ---
 
@@ -869,11 +906,11 @@ npm run electron:build
 
 ### 10.4 环境要求
 
-| 依赖 | 最低版本 | 说明 |
-|------|----------|------|
-| Node.js | 18.x | LTS 版本 |
-| Python | 3.11+ | 运行爬虫脚本 |
-| macOS | 12.0+ | 支持 vibrancy 特性 |
+| 依赖    | 最低版本 | 说明               |
+| ------- | -------- | ------------------ |
+| Node.js | 18.x     | LTS 版本           |
+| Python  | 3.11+    | 运行爬虫脚本       |
+| macOS   | 12.0+    | 支持 vibrancy 特性 |
 
 ---
 

@@ -8,7 +8,8 @@ export default {
         extend: {
             colors: {
                 background: '#0D0D0D',
-                surface: '#1C1C1E', // with opacity in usage usually
+                surface: '#1C1C1E',
+                'sidebar-glass': '#1E1E1E',
                 primary: '#FFFFFF',
                 secondary: '#8E8E93',
                 accent: '#B026FF',
