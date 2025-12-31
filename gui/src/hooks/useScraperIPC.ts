@@ -1,19 +1,20 @@
 import { useEffect, useCallback } from 'react'
 import { useScraperStore } from '../stores/scraperStore'
-import { useThrottle } from './useThrottle'
-import type { StartConfig } from '../types/scraper'
+import { useThrottle, useBatchThrottle } from './useThrottle'
+import type { StartConfig, TaskData } from '../types/scraper'
 
 export function useScraperIPC() {
   const store = useScraperStore()
 
-  // 节流更新
+  // 节流更新进度（进度是聚合数据，丢弃中间值没问题）
   const throttledUpdateProgress = useThrottle(
     store.updateProgress,
     100
   )
 
-  const throttledUpdateTask = useThrottle(
-    store.updateTask,
+  // 批处理更新任务（收集所有任务更新，不丢弃任何一个）
+  const batchUpdateTasks = useBatchThrottle<(task: TaskData) => void>(
+    store.updateTasksBatch,
     50
   )
 
@@ -29,7 +30,8 @@ export function useScraperIPC() {
     })
 
     const unsubTask = window.scraper.onTaskUpdate((msg) => {
-      throttledUpdateTask(msg.data)
+      // 使用批处理，确保每个任务更新都被处理
+      batchUpdateTasks(msg.data)
     })
 
     const unsubComplete = window.scraper.onComplete((msg) => {
@@ -46,7 +48,7 @@ export function useScraperIPC() {
       unsubComplete()
       unsubError()
     }
-  }, [throttledUpdateProgress, throttledUpdateTask, store])
+  }, [throttledUpdateProgress, batchUpdateTasks, store])
 
   // 启动爬虫
   const start = useCallback(async (config: StartConfig = {}) => {

@@ -41,6 +41,7 @@ export interface ScraperActions {
   setRunning: (running: boolean) => void
   updateProgress: (data: ProgressData) => void
   updateTask: (data: TaskData) => void
+  updateTasksBatch: (tasks: TaskData[]) => void
   setComplete: (data: CompleteData) => void
   setError: (error: string) => void
 
@@ -104,6 +105,25 @@ export const useScraperStore = create<ScraperStore>()(
           // 添加新任务
           state.allTasks.push(data)
         }
+
+        // 限制任务数量，但保留最新的
+        if (state.allTasks.length > MAX_TASKS) {
+          state.allTasks = state.allTasks.slice(-MAX_TASKS)
+        }
+      }),
+
+    updateTasksBatch: (tasks) =>
+      set((state) => {
+        // 创建 ID -> 任务 的映射用于快速查找
+        const taskMap = new Map(state.allTasks.map((t) => [t.id, t]))
+
+        // 批量更新/添加任务
+        for (const task of tasks) {
+          taskMap.set(task.id, task)
+        }
+
+        // 转换回数组
+        state.allTasks = Array.from(taskMap.values())
 
         // 限制任务数量，但保留最新的
         if (state.allTasks.length > MAX_TASKS) {

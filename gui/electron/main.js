@@ -37,7 +37,7 @@ function createWindow() {
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173')
-    mainWindow.webContents.openDevTools()
+    // 按需打开 DevTools: mainWindow.webContents.openDevTools()
   } else {
     mainWindow.loadFile(join(__dirname, '../dist/index.html'))
   }
@@ -181,30 +181,21 @@ ipcMain.handle('scraper:stop', async () => {
 
 // 选择 JSON 文件
 ipcMain.handle('file:select-json', async () => {
-  console.log('[IPC] file:select-json called')
-  try {
-    const win = BrowserWindow.getFocusedWindow() || mainWindow
-    console.log('[IPC] Window:', win ? 'found' : 'null')
+  const win = BrowserWindow.getFocusedWindow() || mainWindow
+  const result = await dialog.showOpenDialog(win, {
+    title: '选择 JSON 文件',
+    properties: ['openFile'],
+    filters: [
+      { name: 'JSON Files', extensions: ['json'] },
+      { name: 'All Files', extensions: ['*'] }
+    ]
+  })
 
-    const result = await dialog.showOpenDialog(win, {
-      title: '选择 JSON 文件',
-      properties: ['openFile'],
-      filters: [
-        { name: 'JSON Files', extensions: ['json'] },
-        { name: 'All Files', extensions: ['*'] }
-      ]
-    })
-    console.log('[IPC] Dialog result:', result)
-
-    if (result.canceled || result.filePaths.length === 0) {
-      return null
-    }
-
-    return result.filePaths[0]
-  } catch (err) {
-    console.error('[IPC] file:select-json error:', err)
+  if (result.canceled || result.filePaths.length === 0) {
     return null
   }
+
+  return result.filePaths[0]
 })
 
 // 读取 JSON 文件

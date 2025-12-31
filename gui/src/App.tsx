@@ -49,19 +49,13 @@ function App() {
 
   // 处理导入 JSON
   const handleImportJson = useCallback(async () => {
-    console.log('[App] handleImportJson called')
-    console.log('[App] window.scraper:', window.scraper)
-    console.log('[App] selectJsonFile:', window.scraper?.selectJsonFile)
-
     if (!window.scraper?.selectJsonFile) {
       console.error('selectJsonFile not available')
       return
     }
 
     // 选择文件
-    console.log('[App] Calling selectJsonFile...')
     const filePath = await window.scraper.selectJsonFile()
-    console.log('[App] Selected file:', filePath)
     if (!filePath) return
 
     // 读取文件内容

@@ -1,7 +1,5 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
-console.log('[Preload] Loading preload.js...')
-
 contextBridge.exposeInMainWorld('scraper', {
   // ============ 爬虫控制 ============
 
@@ -58,5 +56,3 @@ contextBridge.exposeInMainWorld('scraper', {
   // 保存配置
   saveConfig: (config) => ipcRenderer.invoke('config:write', config),
 })
-
-console.log('[Preload] window.scraper exposed successfully')
