@@ -118,6 +118,7 @@ export interface ScraperAPI {
   onTaskUpdate: (callback: (data: TaskUpdate) => void) => () => void
   onComplete: (callback: (data: CompleteNotification) => void) => () => void
   onError: (callback: (error: { message: string; code?: number }) => void) => () => void
+  onStopped: (callback: (data: { code: number | null }) => void) => () => void
 
   // 文件操作
   selectJsonFile: () => Promise<string | null>

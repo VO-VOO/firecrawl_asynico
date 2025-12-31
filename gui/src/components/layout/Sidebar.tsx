@@ -24,8 +24,8 @@ export function Sidebar({
     <aside
       className={cn(
         'w-64 flex-shrink-0 flex flex-col',
-        'border-r border-white/5',
-        'bg-[#1E1E1E]/80 backdrop-blur-xl',
+        'border-r border-white/[0.08]',
+        'bg-black/40 backdrop-blur-2xl',
         'relative z-10',
         className
       )}
@@ -70,18 +70,6 @@ export function Sidebar({
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="px-4 py-4 border-t border-white/5">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center">
-            <span className="text-xs text-accent">U</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium truncate">用户</div>
-            <div className="text-xs text-secondary">专业版</div>
-          </div>
-        </div>
-      </div>
     </aside>
   )
 }

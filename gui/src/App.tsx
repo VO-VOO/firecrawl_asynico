@@ -15,6 +15,7 @@ function App() {
   const { start, stop } = useScraperIPC()
 
   const isRunning = useScraperStore((s) => s.isRunning)
+  const isCompleted = useScraperStore((s) => s.isCompleted)
   const progress = useScraperStore((s) => s.progress)
   const allTasks = useScraperStore((s) => s.allTasks)
   const currentPage = useScraperStore((s) => s.currentPage)
@@ -105,6 +106,7 @@ function App() {
             <div className="mb-6">
               <ControlBar
                 isRunning={isRunning}
+                isCompleted={isCompleted}
                 onStart={handleStart}
                 onStop={() => stop()}
                 onImportJson={handleImportJson}
@@ -138,13 +140,13 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen w-full bg-background text-primary selection:bg-accent selection:text-white overflow-hidden">
+    <div className="flex h-screen w-full text-primary selection:bg-accent selection:text-white overflow-hidden">
       <Sidebar
         activeItem={currentPage as NavItemKey}
         onNavigate={handleNavigate}
       />
 
-      <main className="flex-1 p-6 overflow-y-auto">
+      <main className="flex-1 p-6 overflow-y-auto bg-gradient-to-br from-transparent via-white/[0.02] to-transparent">
         {renderPageContent()}
       </main>
     </div>

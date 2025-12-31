@@ -37,6 +37,13 @@ contextBridge.exposeInMainWorld('scraper', {
     return () => ipcRenderer.removeListener('scraper:error', handler)
   },
 
+  // 监听进程停止（作为 complete 的备份）
+  onStopped: (callback) => {
+    const handler = (_, data) => callback(data)
+    ipcRenderer.on('scraper:stopped', handler)
+    return () => ipcRenderer.removeListener('scraper:stopped', handler)
+  },
+
   // ============ 文件操作 ============
 
   // 选择 JSON 文件

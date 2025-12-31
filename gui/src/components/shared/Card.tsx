@@ -21,7 +21,11 @@ const spanClasses: Record<number, string> = {
 export const Card = forwardRef<HTMLDivElement, CardProps>(
   ({ children, className, hoverGlow = true, span = 12, ...props }, ref) => {
     const baseClass = cn(
-      'bg-surface rounded-3xl p-6 border border-white/5',
+      // Apple-style glass morphism
+      'rounded-2xl p-6',
+      'bg-white/[0.03] backdrop-blur-xl',
+      'border border-white/[0.08]',
+      'shadow-[0_8px_32px_rgba(0,0,0,0.3)]',
       spanClasses[span],
       className
     )
@@ -39,10 +43,11 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
         ref={ref}
         className={cn(baseClass, 'relative group')}
         whileHover={{
-          borderColor: 'rgba(176, 38, 255, 0.5)',
-          boxShadow: '0 0 20px rgba(176, 38, 255, 0.15)',
+          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          borderColor: 'rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)',
         }}
-        transition={{ duration: 0.3 }}
+        transition={{ duration: 0.2 }}
         {...props}
       >
         {children}

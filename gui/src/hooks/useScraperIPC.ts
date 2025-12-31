@@ -42,11 +42,18 @@ export function useScraperIPC() {
       store.setError(error.message)
     })
 
+    // 监听进程停止（作为 complete 的备份）
+    const unsubStopped = window.scraper.onStopped?.(() => {
+      // 确保状态被设置为非运行，即使 complete 消息丢失
+      store.setRunning(false)
+    })
+
     return () => {
       unsubProgress()
       unsubTask()
       unsubComplete()
       unsubError()
+      unsubStopped?.()
     }
   }, [throttledUpdateProgress, batchUpdateTasks, store])
 

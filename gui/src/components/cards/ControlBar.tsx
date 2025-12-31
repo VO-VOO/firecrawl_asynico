@@ -3,6 +3,7 @@ import { cn } from '../../utils/cn'
 
 export interface ControlBarProps {
   isRunning: boolean
+  isCompleted?: boolean
   onStart: () => void
   onStop: () => void
   onImportJson?: () => void
@@ -16,6 +17,7 @@ export interface ControlBarProps {
 
 export function ControlBar({
   isRunning,
+  isCompleted = false,
   onStart,
   onStop,
   onImportJson,
@@ -34,9 +36,11 @@ export function ControlBar({
           onClick={onImportJson}
           disabled={disabled}
           className={cn(
-            'px-4 py-2 rounded-full font-medium',
-            'bg-white/5 text-secondary border border-white/10',
-            'hover:bg-white/10 hover:text-white transition-colors',
+            'px-4 py-2.5 rounded-xl font-medium text-sm',
+            'bg-white/[0.06] backdrop-blur-md',
+            'text-white/70 border border-white/[0.08]',
+            'hover:bg-white/[0.1] hover:text-white hover:border-white/[0.15]',
+            'shadow-[0_2px_8px_rgba(0,0,0,0.2)]',
             disabled && 'opacity-50 cursor-not-allowed'
           )}
           whileHover={disabled ? {} : { scale: 1.02 }}
@@ -52,13 +56,15 @@ export function ControlBar({
           onClick={onStart}
           disabled={disabled || !importedFile}
           className={cn(
-            'px-6 py-2 rounded-full font-medium',
-            'bg-accent text-white',
-            'hover:bg-accent/80 transition-colors',
+            'px-6 py-2.5 rounded-xl font-medium text-sm',
+            'bg-accent/90 backdrop-blur-md text-white',
+            'border border-accent/50',
+            'hover:bg-accent hover:border-accent/70',
+            'shadow-[0_2px_12px_rgba(255,122,89,0.3)]',
             (disabled || !importedFile) && 'opacity-50 cursor-not-allowed'
           )}
-          whileHover={disabled || !importedFile ? {} : { scale: 1.05 }}
-          whileTap={disabled || !importedFile ? {} : { scale: 0.95 }}
+          whileHover={disabled || !importedFile ? {} : { scale: 1.02 }}
+          whileTap={disabled || !importedFile ? {} : { scale: 0.98 }}
         >
           开始爬取
         </motion.button>
@@ -67,13 +73,15 @@ export function ControlBar({
           onClick={onStop}
           disabled={disabled}
           className={cn(
-            'px-6 py-2 rounded-full font-medium',
-            'bg-error text-white',
-            'hover:bg-error/80 transition-colors',
+            'px-6 py-2.5 rounded-xl font-medium text-sm',
+            'bg-red-500/90 backdrop-blur-md text-white',
+            'border border-red-500/50',
+            'hover:bg-red-500 hover:border-red-500/70',
+            'shadow-[0_2px_12px_rgba(239,68,68,0.3)]',
             disabled && 'opacity-50 cursor-not-allowed'
           )}
-          whileHover={disabled ? {} : { scale: 1.05 }}
-          whileTap={disabled ? {} : { scale: 0.95 }}
+          whileHover={disabled ? {} : { scale: 1.02 }}
+          whileTap={disabled ? {} : { scale: 0.98 }}
         >
           停止
         </motion.button>
@@ -85,10 +93,15 @@ export function ControlBar({
           <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
           运行中...
         </div>
-      ) : importedFile ? (
+      ) : isCompleted ? (
         <div className="flex items-center gap-2 text-sm">
           <div className="w-2 h-2 rounded-full bg-green-500" />
-          <span className="text-green-500">{importedFile.articleCount} 个任务</span>
+          <span className="text-green-500">已完成</span>
+        </div>
+      ) : importedFile ? (
+        <div className="flex items-center gap-2 text-sm">
+          <div className="w-2 h-2 rounded-full bg-blue-500" />
+          <span className="text-blue-400">{importedFile.articleCount} 个任务</span>
           <span className="text-secondary truncate max-w-48" title={importedFile.path}>
             ({fileName})
           </span>

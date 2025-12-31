@@ -117,6 +117,8 @@ ipcMain.handle('scraper:start', async (event, config = {}) => {
 
     pythonProcess.on('close', (code) => {
       pythonProcess = null
+      // 无论退出码如何，都通知前端进程已停止
+      mainWindow?.webContents.send('scraper:stopped', { code })
       if (code !== 0 && code !== null) {
         mainWindow?.webContents.send('scraper:error', {
           message: `Process exited with code ${code}`
