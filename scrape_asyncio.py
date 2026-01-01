@@ -21,7 +21,7 @@ from aiohttp import ClientError
 
 # 配置
 FIRECRAWL_URL = os.environ.get("FIRECRAWL_URL", "http://localhost:8547")
-FIRECRAWL_API_KEY = os.environ.get("FIRECRAWL_API_KEY", "test")  # 本地部署可使用任意字符串
+FIRECRAWL_API_KEY = os.environ.get("FIRECRAWL_API_KEY", "")  # 必须通过 GUI 或环境变量配置
 BASE_DIR = Path(__file__).parent
 OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", str(BASE_DIR)))
 ARTICLES_FILE = Path(os.environ.get("ARTICLES_FILE", str(BASE_DIR / "cbre_data_center_articles.json")))
@@ -98,6 +98,36 @@ def emit_complete(total: int, success: int, failed: int, elapsed: float, failed_
             "failedTasks": failed_tasks
         }
     })
+
+
+async def _cleanup_firecrawl_client(client) -> None:
+    """
+    安全清理 AsyncFirecrawl 客户端资源
+
+    支持多种 SDK 版本的内部实现：
+    - client.close() - 直接关闭方法
+    - client._client.close() - httpx AsyncClient
+    - client._client.aclose() - httpx 新版本
+    """
+    cleanup_methods = [
+        # 直接关闭方法
+        lambda c: c.close() if hasattr(c, 'close') and callable(c.close) else None,
+        # httpx AsyncClient (旧版)
+        lambda c: c._client.close() if hasattr(c, '_client') and hasattr(c._client, 'close') else None,
+        # httpx AsyncClient (新版)
+        lambda c: c._client.aclose() if hasattr(c, '_client') and hasattr(c._client, 'aclose') else None,
+    ]
+
+    for get_method in cleanup_methods:
+        try:
+            method = get_method(client)
+            if method is not None:
+                result = method
+                if asyncio.iscoroutine(result):
+                    await result
+                break
+        except Exception:
+            continue
 
 
 def setup_signal_handlers():
@@ -451,6 +481,16 @@ async def main_async():
         print(f"请求超时: {REQUEST_TIMEOUT}s")
         print("=" * 70)
 
+    # 检查 API Key 是否配置
+    if not FIRECRAWL_API_KEY:
+        error_msg = "未配置 Firecrawl API Key，请在设置中配置"
+        if GUI_MODE:
+            emit_json({"type": "error", "message": error_msg})
+        else:
+            print(f"❌ 错误: {error_msg}")
+            print("请设置环境变量 FIRECRAWL_API_KEY 或在 GUI 设置中配置")
+        return
+
     # 检查文章列表文件是否存在
     if not os.path.exists(ARTICLES_FILE):
         error_msg = f"找不到文章列表文件 {ARTICLES_FILE}"
@@ -588,17 +628,8 @@ async def main_async():
                 print(f"{'=' * 70}\n")
 
     finally:
-        # 确保客户端资源被释放
-        if hasattr(client, 'close') and callable(client.close):
-            try:
-                await client.close()
-            except Exception:
-                pass
-        elif hasattr(client, '_client') and hasattr(client._client, 'close'):
-            try:
-                await client._client.close()
-            except Exception:
-                pass
+        # 确保客户端资源被释放（支持多种 Firecrawl SDK 版本）
+        await _cleanup_firecrawl_client(client)
 
     # 最终统计
     total_time = time.time() - start_time_total

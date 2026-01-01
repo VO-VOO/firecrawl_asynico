@@ -1,217 +1,144 @@
-# Firecrawl 文章爬虫
+# Firecrawl Scraper
 
-一个基于 Python asyncio 和 Firecrawl 的高效异步文章爬取工具，专门用于批量爬取网站文章内容并保存为 Markdown 格式。
+基于 Firecrawl 的高效异步批量文章爬取工具，配备现代化 GUI 界面。
 
 ## 功能特性
 
-- 🚀 **异步并发爬取**：使用 asyncio 实现高效并发，显著提升爬取速度
-- 🔄 **断点续传**：支持检测已存在文件，避免重复爬取
-- 🔁 **失败重试**：内置重试机制，提高爬取成功率
-- 📄 **格式转换**：自动将爬取内容转换为 Markdown 格式
-- 🏷️ **安全命名**：自动生成安全的文件名
-- 📊 **进度监控**：实时显示爬取进度和统计信息
-- ⚙️ **并发控制**：可配置并发数量和信号量限制
+- **异步并发爬取** - 基于 Python asyncio，支持高并发批量爬取
+- **断点续传** - 自动检测已完成任务，避免重复爬取
+- **智能重试** - 内置指数退避重试机制，提高成功率
+- **现代 GUI** - Electron + React 桌面应用，实时监控爬取进度
+- **格式转换** - 自动将网页内容转换为 Markdown 格式
+- **优雅停止** - 支持随时中止任务，安全退出
 
-## 项目结构
+## 系统要求
 
-```
-firecrawl-scraper/
-├── README.md                          # 项目说明文档
-├── pyproject.toml                     # 项目配置和依赖
-├── main.py                            # 简单入口文件
-├── scrape_asyncio.py                  # 主要爬虫脚本
-├── cbre_data_center_articles.json     # 文章列表数据
-└── .python-version                    # Python 版本配置
-```
-
-## 依赖要求
-
+- macOS / Linux / Windows
+- Node.js >= 18
 - Python >= 3.11
-- firecrawl-py >= 4.6.0
-- requests >= 2.32.5
-- Firecrawl 服务器（本地或云端）
+- [uv](https://docs.astral.sh/uv/) (Python 包管理器)
+- Firecrawl 服务 (本地部署或云服务)
 
-## 安装
+## 快速开始
 
 ### 1. 克隆项目
 
 ```bash
 git clone <repository-url>
-cd firecrawl-scraper
+cd firecrawl_scraper
 ```
 
-### 2. 安装依赖
-
-使用 uv（推荐）：
+### 2. 启动应用
 
 ```bash
-uv sync
+./start.sh
 ```
 
-或使用 pip：
-
-```bash
-pip install -e .
-```
+首次运行会自动：
+- 配置 Python 虚拟环境 (通过 uv)
+- 安装 Python 依赖
+- 安装 Node.js 依赖
+- 启动 GUI 应用
 
 ### 3. 配置 Firecrawl
 
-确保 Firecrawl 服务正在运行：
+启动应用后，进入 **设置** 页面配置：
 
-```bash
-# 启动本地 Firecrawl 服务
-firecrawl serve
-```
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| Firecrawl URL | 服务地址 | `http://localhost:8547` |
+| API Key | 认证密钥 | (需配置) |
+| 输出目录 | 保存路径 | 项目根目录 |
 
-默认配置使用本地服务：
-- URL: `http://localhost:8547`
-- API Key: `test`（本地服务可使用任意字符串）
+> 本地部署 Firecrawl 可使用任意字符串作为 API Key
 
-## 使用方法
+### 4. 开始爬取
 
-### 准备文章列表
+1. 点击 **导入 JSON** 选择文章列表文件
+2. 点击 **开始爬取** 启动任务
+3. 实时查看进度和任务状态
 
-首先需要准备包含文章信息的 JSON 文件，格式如下：
+## 文章列表格式
 
 ```json
 {
   "articles": [
     {
-      "title": "文章标题 1",
-      "url": "https://example.com/article-1"
-    },
-    {
-      "title": "文章标题 2",
-      "url": "https://example.com/article-2"
+      "title": "文章标题",
+      "url": "https://example.com/article"
     }
   ]
 }
 ```
 
-### 运行爬虫
-
-```bash
-python scrape_asyncio.py
-```
-
-## 配置参数
-
-在 `scrape_asyncio.py` 中可以调整以下配置：
-
-```python
-# 并发配置
-MAX_CONCURRENT = 15      # 最大并发数（推荐：2×CPU核心数）
-SEMAPHORE_LIMIT = 15     # 信号量限制
-RETRY_COUNT = 3          # 失败重试次数
-RETRY_DELAY = 2.0        # 重试延迟（秒）
-
-# Firecrawl 配置
-FIRECRAWL_URL = "http://localhost:8547"  # Firecrawl 服务地址
-```
-
 ## 输出文件
 
-爬取结果将保存到脚本所在目录，文件命名规则：
-```
-{序号:03d}_{安全标题}.md
-```
+爬取结果保存为 Markdown 文件：
 
-例如：
 ```
-001_文章标题示例一.md
-002_文章标题示例二.md
+001_文章标题.md
+002_另一篇文章.md
+...
 ```
 
 每个文件包含：
 - 文章标题
 - 原始 URL
 - 爬取时间
-- Markdown 格式的文章内容
+- Markdown 格式正文
 
-## 功能详解
-
-### 断点续传
-
-程序会自动检测已存在的 `.md` 文件，跳过已成功爬取的文章，只处理未完成的任务。
-
-### 进度监控
-
-程序会实时显示：
-- 当前进度（已处理/总数）
-- 成功/失败统计
-- 已用时间和预计总用时
-- 当前轮次的统计信息
-
-### 错误处理
-
-- 自动重试失败的请求（最多3次）
-- 显示详细错误信息
-- 记录失败的文章列表
-- 不会因单个失败而中断整个任务
-
-## 输出示例
+## 项目结构
 
 ```
-⚙️  配置:
-  • 最大并发数: 15
-  • 重试次数: 3
-  • 输出目录: /path/to/project
-
-输出目录: /path/to/project
-Firecrawl URL: http://localhost:8547
-最大并发数: 15
-======================================================================
-总共需要爬取 100 篇文章
-
-检测到已有 20 篇文章，剩余 80 篇待爬取
-实际需要爬取: 80 篇文章
-======================================================================
-
-开始异步并发爬取 (最大并发: 15)...
-
-[1/80] ✓ 成功 (2.3s): 001_示例文章一.md
-[2/80] ✓ 成功 (1.8s): 002_示例文章二.md
-...
-
-==============================================================
-异步爬取完成！
-==============================================================
-总文章数: 100
-之前已成功: 20
-本轮成功: 75
-本轮失败: 5
-总用时: 125.4秒
-平均用时: 1.25秒/篇
-最大并发数: 15
-输出目录: /path/to/project
-
-✅ 异步爬取完成！
+firecrawl_scraper/
+├── start.sh                 # 一键启动脚本
+├── scrape_asyncio.py        # Python 爬虫核心
+├── pyproject.toml           # Python 依赖配置
+└── gui/                     # GUI 应用
+    ├── electron/            # Electron 主进程
+    └── src/                 # React 前端
 ```
+
+## 命令行模式
+
+也可以直接运行 Python 脚本 (无 GUI)：
+
+```bash
+# 配置环境变量
+export FIRECRAWL_URL="http://localhost:8547"
+export FIRECRAWL_API_KEY="your-api-key"
+export ARTICLES_FILE="path/to/articles.json"
+export OUTPUT_DIR="path/to/output"
+
+# 运行爬虫
+uv run python scrape_asyncio.py
+```
+
+## 配置参数
+
+| 环境变量 | 说明 | 默认值 |
+|----------|------|--------|
+| `FIRECRAWL_URL` | Firecrawl 服务地址 | `http://localhost:8547` |
+| `FIRECRAWL_API_KEY` | API 密钥 | (必填) |
+| `ARTICLES_FILE` | 文章列表 JSON 路径 | `./cbre_data_center_articles.json` |
+| `OUTPUT_DIR` | 输出目录 | 项目根目录 |
+| `MAX_CONCURRENT` | 最大并发数 | `15` |
+| `BATCH_SIZE` | 批次大小 | `50` |
 
 ## 故障排除
 
-### 1. 连接错误
+**连接失败**
 - 确保 Firecrawl 服务正在运行
-- 检查 URL 和端口是否正确
-- 验证网络连接
+- 检查 URL 和端口配置
 
-### 2. 权限错误
-- 确保有写入输出目录的权限
-- 检查磁盘空间是否充足
+**任务立即结束**
+- 检查设置页面的 API Key 是否已配置
+- 查看控制台错误信息
 
-### 3. 大量失败
-- 降低并发数（`MAX_CONCURRENT`）
-- 增加重试次数（`RETRY_COUNT`）
-- 检查目标网站是否对爬虫有限制
+**大量失败**
+- 降低 `MAX_CONCURRENT` 值
+- 检查目标网站是否有反爬限制
 
 ## 许可证
 
 MIT License
-
-## 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-## 联系方式
-
-如有问题，请创建 Issue 反馈。

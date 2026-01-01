@@ -10,7 +10,7 @@ interface Settings {
 const defaultSettings: Settings = {
   outputDir: '',
   firecrawlUrl: 'http://localhost:8547',
-  firecrawlApiKey: 'test',
+  firecrawlApiKey: '',  // 不提供默认值，强制用户配置
 }
 
 export function SettingsPage() {
@@ -148,7 +148,7 @@ export function SettingsPage() {
             )}
           />
           <p className="text-xs text-secondary">
-            本地部署可使用任意字符串，如 "test"
+            本地部署可使用任意字符串；使用 Firecrawl 云服务需填入有效 API Key
           </p>
         </div>
 

@@ -15,8 +15,8 @@ let pythonProcess = null
 // 项目根目录
 const projectRoot = join(__dirname, '../..')
 
-// 配置文件路径
-const envFilePath = join(projectRoot, '.env')
+// 配置文件路径 - 使用用户数据目录存储配置
+const getConfigPath = () => join(app.getPath('userData'), 'scraper-config.json')
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -58,6 +58,20 @@ function createWindow() {
 
 // ============ 爬虫控制 IPC Handlers ============
 
+// 读取保存的配置（内部辅助函数）
+async function loadSavedConfig() {
+  try {
+    const configPath = getConfigPath()
+    if (existsSync(configPath)) {
+      const content = await readFile(configPath, 'utf-8')
+      return JSON.parse(content)
+    }
+  } catch (err) {
+    console.error('Failed to load saved config:', err)
+  }
+  return {}
+}
+
 // 启动爬虫
 ipcMain.handle('scraper:start', async (event, config = {}) => {
   if (pythonProcess) {
@@ -65,10 +79,13 @@ ipcMain.handle('scraper:start', async (event, config = {}) => {
   }
 
   try {
+    // 先读取保存的配置
+    const savedConfig = await loadSavedConfig()
+
     // 使用 uv run 运行 Python 脚本
     const scriptPath = join(projectRoot, 'scrape_asyncio.py')
 
-    // 构建环境变量
+    // 构建环境变量（优先使用传入的配置，其次使用保存的配置）
     const envVars = {
       ...process.env,
       GUI_MODE: 'true',
@@ -81,19 +98,18 @@ ipcMain.handle('scraper:start', async (event, config = {}) => {
       envVars.ARTICLES_FILE = config.articlesFile
     }
 
-    // 如果有自定义输出目录
-    if (config.outputDir) {
-      envVars.OUTPUT_DIR = config.outputDir
-    }
+    // 输出目录（优先传入配置 > 保存配置 > 项目根目录）
+    const outputDir = config.outputDir || savedConfig.outputDir || projectRoot
+    envVars.OUTPUT_DIR = outputDir
 
-    // 如果有自定义 Firecrawl URL
-    if (config.firecrawlUrl) {
-      envVars.FIRECRAWL_URL = config.firecrawlUrl
-    }
+    // Firecrawl URL（优先传入配置 > 保存配置 > 默认值）
+    const firecrawlUrl = config.firecrawlUrl || savedConfig.firecrawlUrl || 'http://localhost:8547'
+    envVars.FIRECRAWL_URL = firecrawlUrl
 
-    // 如果有自定义 API Key
-    if (config.firecrawlApiKey) {
-      envVars.FIRECRAWL_API_KEY = config.firecrawlApiKey
+    // API Key（优先传入配置 > 保存配置）
+    const firecrawlApiKey = config.firecrawlApiKey || savedConfig.firecrawlApiKey || ''
+    if (firecrawlApiKey) {
+      envVars.FIRECRAWL_API_KEY = firecrawlApiKey
     }
 
     pythonProcess = spawn('uv', ['run', 'python', scriptPath], {
@@ -245,45 +261,28 @@ ipcMain.handle('dialog:select-directory', async () => {
 ipcMain.handle('config:read', async () => {
   try {
     // 默认配置
-    const config = {
+    const defaultConfig = {
       outputDir: projectRoot,
       firecrawlUrl: 'http://localhost:8547',
-      firecrawlApiKey: 'test'
+      firecrawlApiKey: ''  // 不提供默认值，强制用户配置
     }
 
-    // 尝试从 .env 文件读取
-    if (existsSync(envFilePath)) {
-      const content = await readFile(envFilePath, 'utf-8')
-      const lines = content.split('\n')
+    const configPath = getConfigPath()
 
-      for (const line of lines) {
-        const trimmed = line.trim()
-        if (!trimmed || trimmed.startsWith('#')) continue
-
-        const [key, ...valueParts] = trimmed.split('=')
-        const value = valueParts.join('=').trim()
-
-        switch (key.trim()) {
-          case 'OUTPUT_DIR':
-            config.outputDir = value
-            break
-          case 'FIRECRAWL_URL':
-            config.firecrawlUrl = value
-            break
-          case 'FIRECRAWL_API_KEY':
-            config.firecrawlApiKey = value
-            break
-        }
-      }
+    // 尝试从 JSON 配置文件读取
+    if (existsSync(configPath)) {
+      const content = await readFile(configPath, 'utf-8')
+      const savedConfig = JSON.parse(content)
+      return { ...defaultConfig, ...savedConfig }
     }
 
-    return config
+    return defaultConfig
   } catch (err) {
     console.error('Failed to read config:', err)
     return {
       outputDir: projectRoot,
       firecrawlUrl: 'http://localhost:8547',
-      firecrawlApiKey: 'test'
+      firecrawlApiKey: ''
     }
   }
 })
@@ -291,13 +290,14 @@ ipcMain.handle('config:read', async () => {
 // 保存配置
 ipcMain.handle('config:write', async (event, config) => {
   try {
-    const envContent = `# Firecrawl Scraper Configuration
-OUTPUT_DIR=${config.outputDir || projectRoot}
-FIRECRAWL_URL=${config.firecrawlUrl || 'http://localhost:8547'}
-FIRECRAWL_API_KEY=${config.firecrawlApiKey || 'test'}
-`
+    const configPath = getConfigPath()
+    const configData = {
+      outputDir: config.outputDir || projectRoot,
+      firecrawlUrl: config.firecrawlUrl || 'http://localhost:8547',
+      firecrawlApiKey: config.firecrawlApiKey || ''
+    }
 
-    await writeFile(envFilePath, envContent, 'utf-8')
+    await writeFile(configPath, JSON.stringify(configData, null, 2), 'utf-8')
     return { success: true }
   } catch (err) {
     return { success: false, error: err.message }
